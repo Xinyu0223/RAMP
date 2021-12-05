@@ -10,6 +10,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import OrdinalEncoder
+import xgboost as xgb
 
 
 def _encode_dates(X):
@@ -44,26 +45,19 @@ def get_estimator():
     date_encoder = FunctionTransformer(_encode_dates)
     date_cols = ['year', 'month', 'day', 'weekday', 'hour']
 
-    categorical_encoder = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
+    categorical_encoder = OneHotEncoder(handle_unknown="ignore")
     categorical_cols = ["counter_name", "site_name"]
 
     numeric_cols = ['dd', 'ff', 't', 'td', 'u', 'vv', 'total_cases', 'new_deaths', 'is_workday', 'lockdown', 'curfew']
 
     preprocessor = ColumnTransformer([
         ('date', "passthrough", date_cols),
-        ('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), categorical_cols),
+        ('cat', categorical_encoder, categorical_cols),
         ('numeric', 'passthrough', numeric_cols)
     ])
 
-    params = {
-        "n_estimators": 500,
-        "max_depth": 4,
-        "min_samples_split": 5,
-        "learning_rate": 0.01,
-        "loss": "squared_error",
-    }
-
-    regressor = GradientBoostingRegressor(**params)
+    regressor = xgb.XGBRegressor(learning_rate=0.1, n_estimators=900, max_depth=8, min_child_weight=2, gamma=0.2, subsample=0.8, colsample_bytree=0.8,
+            nthread=4, scale_pos_weight=1, seed=27)
 
     pipe =  make_pipeline(
         FunctionTransformer(_merge_external_data, validate=False),
