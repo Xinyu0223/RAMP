@@ -11,6 +11,8 @@ from sklearn.linear_model import Ridge
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import OrdinalEncoder
 import xgboost as xgb
+from catboost import CatBoostRegressor
+from sklearn.model_selection import RandomizedSearchCV
 
 
 def _encode_dates(X):
@@ -56,14 +58,22 @@ def get_estimator():
         ('numeric', 'passthrough', numeric_cols)
     ])
 
-    regressor = xgb.XGBRegressor(learning_rate=0.1, n_estimators=900, max_depth=8, min_child_weight=2, gamma=0.2, subsample=0.8, colsample_bytree=0.8,
-            nthread=4, scale_pos_weight=1, seed=27)
+    #regressor = xgb.XGBRegressor(learning_rate=0.1, n_estimators=900, max_depth=6, min_child_weight=2, gamma=0.2, subsample=0.8, colsample_bytree=0.8,
+    #        nthread=4, scale_pos_weight=1, seed=27)
+    #regressor = CatBoostRegressor()
+
+    grid = {'depth': [4, 6, 10],
+        'l2_leaf_reg': [1, 3, 5, 7, 9]}
+
+    
+    randm = RandomizedSearchCV(estimator=CatBoostRegressor(), param_distributions = grid, 
+                               cv = 5, n_iter = 10, n_jobs=-1, scoring='neg_root_mean_squared_error')
 
     pipe =  make_pipeline(
         FunctionTransformer(_merge_external_data, validate=False),
         date_encoder,
         preprocessor,
-        regressor
+        randm
     )
 
     return pipe
